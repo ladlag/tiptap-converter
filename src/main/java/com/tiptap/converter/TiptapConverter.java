@@ -221,25 +221,48 @@ public class TiptapConverter {
 
     /**
      * Convert ParagraphBlock to paragraph node
+     * Enhanced: Detects heading style from paragraph style field
      */
     private Map<String, Object> convertParagraphBlock(Object block) {
-        Map<String, Object> node = new LinkedHashMap<>();
-        node.put("type", "paragraph");
+        // Check if paragraph has a heading style (legacy Word style detection)
+        String paragraphStyle = getFieldValue(block, "getStyle");
+        Integer styleLevel = detectHeadingFromStyle(paragraphStyle);
         
-        Map<String, Object> attrs = new LinkedHashMap<>();
-        Object alignment = getFieldValue(block, "getAlignment");
-        if (alignment != null) {
-            // Try to get value from enum
-            String alignValue = getFieldValue(alignment, "getValue");
-            if (alignValue != null) {
-                attrs.put("textAlign", alignValue);
-            } else {
-                attrs.put("textAlign", alignment.toString().toLowerCase());
+        Map<String, Object> node = new LinkedHashMap<>();
+        
+        // If style indicates heading, create heading node instead
+        if (styleLevel != null && styleLevel > 0) {
+            node.put("type", "heading");
+            Map<String, Object> attrs = new LinkedHashMap<>();
+            int tiptapLevel = Math.max(1, Math.min(6, styleLevel));
+            attrs.put("level", tiptapLevel);
+            attrs.put("originLevel", styleLevel);
+            if (paragraphStyle != null) {
+                attrs.put("styleSource", paragraphStyle);
             }
+            node.put("attrs", attrs);
+        } else {
+            node.put("type", "paragraph");
+            Map<String, Object> attrs = new LinkedHashMap<>();
+            
+            // Text alignment
+            Object alignment = getFieldValue(block, "getAlignment");
+            if (alignment != null) {
+                String alignValue = getFieldValue(alignment, "getValue");
+                if (alignValue != null) {
+                    attrs.put("textAlign", alignValue);
+                } else {
+                    attrs.put("textAlign", alignment.toString().toLowerCase());
+                }
+            }
+            
+            // Enhanced: Add indentation, spacing, borders if present
+            addParagraphFormatting(attrs, block);
+            
+            // Preserve original block data
+            attrs.put("origin", convertToMap(block));
+            node.put("attrs", attrs);
         }
-        // Preserve original block data
-        attrs.put("origin", convertToMap(block));
-        node.put("attrs", attrs);
         
         // Convert runs to text nodes
         List<?> runs = getFieldValue(block, "getRuns");
@@ -248,11 +271,112 @@ public class TiptapConverter {
         
         return node;
     }
+    
+    /**
+     * Detect heading level from paragraph style name (legacy Word style detection)
+     * Supports styles like "Heading 1", "Heading1", "标题 1", "Title", etc.
+     */
+    private Integer detectHeadingFromStyle(String styleName) {
+        if (styleName == null || styleName.isEmpty()) {
+            return null;
+        }
+        
+        String lowerStyle = styleName.toLowerCase().trim();
+        
+        // Common heading patterns
+        if (lowerStyle.matches(".*heading\\s*[1-6].*") || 
+            lowerStyle.matches(".*标题\\s*[1-6].*")) {
+            // Extract digit
+            for (char c : lowerStyle.toCharArray()) {
+                if (Character.isDigit(c)) {
+                    int level = Character.getNumericValue(c);
+                    if (level >= 1 && level <= 6) {
+                        return level;
+                    }
+                }
+            }
+        }
+        
+        // Special cases
+        if (lowerStyle.contains("title") || lowerStyle.equals("标题")) {
+            return 1;
+        }
+        if (lowerStyle.contains("subtitle") || lowerStyle.contains("副标题")) {
+            return 2;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Add enhanced paragraph formatting attributes (indentation, spacing, borders)
+     */
+    private void addParagraphFormatting(Map<String, Object> attrs, Object block) {
+        // Indentation
+        Object indentLeft = getFieldValue(block, "getIndentLeft");
+        if (indentLeft != null) {
+            attrs.put("indentLeft", indentLeft);
+        }
+        
+        Object indentRight = getFieldValue(block, "getIndentRight");
+        if (indentRight != null) {
+            attrs.put("indentRight", indentRight);
+        }
+        
+        Object indentFirstLine = getFieldValue(block, "getIndentFirstLine");
+        if (indentFirstLine != null) {
+            attrs.put("indentFirstLine", indentFirstLine);
+        }
+        
+        // Spacing
+        Object spacingBefore = getFieldValue(block, "getSpacingBefore");
+        if (spacingBefore != null) {
+            attrs.put("spacingBefore", spacingBefore);
+        }
+        
+        Object spacingAfter = getFieldValue(block, "getSpacingAfter");
+        if (spacingAfter != null) {
+            attrs.put("spacingAfter", spacingAfter);
+        }
+        
+        Object lineSpacing = getFieldValue(block, "getLineSpacing");
+        if (lineSpacing != null) {
+            attrs.put("lineSpacing", lineSpacing);
+        }
+        
+        // Borders
+        Object borderTop = getFieldValue(block, "getBorderTop");
+        if (borderTop != null) {
+            attrs.put("borderTop", convertToMap(borderTop));
+        }
+        
+        Object borderBottom = getFieldValue(block, "getBorderBottom");
+        if (borderBottom != null) {
+            attrs.put("borderBottom", convertToMap(borderBottom));
+        }
+        
+        Object borderLeft = getFieldValue(block, "getBorderLeft");
+        if (borderLeft != null) {
+            attrs.put("borderLeft", convertToMap(borderLeft));
+        }
+        
+        Object borderRight = getFieldValue(block, "getBorderRight");
+        if (borderRight != null) {
+            attrs.put("borderRight", convertToMap(borderRight));
+        }
+        
+        // Background color
+        Object backgroundColor = getFieldValue(block, "getBackgroundColor");
+        if (backgroundColor != null) {
+            attrs.put("backgroundColor", backgroundColor);
+        }
+    }
 
     /**
      * Convert list of TextRuns to text nodes with marks
      * Each run becomes a separate text node (no merging)
      * Handles \n by splitting into text + hardBreak + text
+     * Enhanced: Handles embedded images and attachments within runs
      */
     private List<Map<String, Object>> convertRuns(List<?> runs) {
         List<Map<String, Object>> content = new ArrayList<>();
@@ -262,8 +386,25 @@ public class TiptapConverter {
         }
         
         for (Object run : runs) {
+            // Enhanced: Check for embedded images in run
+            List<?> embeddedImages = getFieldValue(run, "getEmbeddedImages");
+            if (embeddedImages != null && !embeddedImages.isEmpty()) {
+                for (Object img : embeddedImages) {
+                    content.add(convertEmbeddedImage(img));
+                }
+            }
+            
+            // Enhanced: Check for embedded attachments in run
+            List<?> embeddedAttachments = getFieldValue(run, "getEmbeddedAttachments");
+            if (embeddedAttachments != null && !embeddedAttachments.isEmpty()) {
+                for (Object attachment : embeddedAttachments) {
+                    content.add(convertEmbeddedAttachment(attachment));
+                }
+            }
+            
+            // Process text content
             String text = getFieldValue(run, "getText");
-            if (text == null) {
+            if (text == null || text.isEmpty()) {
                 continue;
             }
             
@@ -288,9 +429,104 @@ public class TiptapConverter {
         
         return content;
     }
+    
+    /**
+     * Convert embedded image from run to image node
+     * This handles images that appear inline within text runs (legacy setPictures logic)
+     */
+    private Map<String, Object> convertEmbeddedImage(Object imageData) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("type", "image");
+        
+        Map<String, Object> attrs = new LinkedHashMap<>();
+        
+        String src = getFieldValue(imageData, "getSrc");
+        if (src == null) {
+            src = getFieldValue(imageData, "getUrl");
+        }
+        if (src == null) {
+            src = getFieldValue(imageData, "getPath");
+        }
+        if (src != null) {
+            attrs.put("src", src);
+        }
+        
+        String alt = getFieldValue(imageData, "getAlt");
+        if (alt != null) {
+            attrs.put("alt", alt);
+        }
+        
+        String title = getFieldValue(imageData, "getTitle");
+        if (title != null) {
+            attrs.put("title", title);
+        }
+        
+        Integer width = getFieldValue(imageData, "getWidth");
+        if (width != null) {
+            attrs.put("width", width);
+        }
+        
+        Integer height = getFieldValue(imageData, "getHeight");
+        if (height != null) {
+            attrs.put("height", height);
+        }
+        
+        // Preserve full data
+        attrs.put("origin", convertToMap(imageData));
+        node.put("attrs", attrs);
+        
+        return node;
+    }
+    
+    /**
+     * Convert embedded attachment from run to attachment node
+     * This handles attachments that appear inline within text runs (legacy setFile logic)
+     */
+    private Map<String, Object> convertEmbeddedAttachment(Object attachmentData) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("type", "attachment");
+        
+        Map<String, Object> attrs = new LinkedHashMap<>();
+        
+        String name = getFieldValue(attachmentData, "getName");
+        if (name == null) {
+            name = getFieldValue(attachmentData, "getFileName");
+        }
+        if (name != null) {
+            attrs.put("name", name);
+        }
+        
+        String url = getFieldValue(attachmentData, "getUrl");
+        if (url == null) {
+            url = getFieldValue(attachmentData, "getPath");
+        }
+        if (url != null) {
+            attrs.put("url", url);
+        }
+        
+        Long size = getFieldValue(attachmentData, "getSize");
+        if (size != null) {
+            attrs.put("size", size);
+        }
+        
+        String mimeType = getFieldValue(attachmentData, "getMimeType");
+        if (mimeType == null) {
+            mimeType = getFieldValue(attachmentData, "getContentType");
+        }
+        if (mimeType != null) {
+            attrs.put("mimeType", mimeType);
+        }
+        
+        // Preserve full data
+        attrs.put("origin", convertToMap(attachmentData));
+        node.put("attrs", attrs);
+        
+        return node;
+    }
 
     /**
      * Create a text node with marks from a TextRun
+     * Enhanced: Supports strikethrough, subscript, superscript, and more
      */
     private Map<String, Object> createTextNode(String text, Object run) {
         Map<String, Object> textNode = new LinkedHashMap<>();
@@ -318,6 +554,45 @@ public class TiptapConverter {
         if (Boolean.TRUE.equals(underline)) {
             Map<String, Object> mark = new LinkedHashMap<>();
             mark.put("type", "underline");
+            marks.add(mark);
+        }
+        
+        // Enhanced: Strikethrough support
+        Boolean strikethrough = getFieldValue(run, "getStrikethrough");
+        if (Boolean.TRUE.equals(strikethrough)) {
+            Map<String, Object> mark = new LinkedHashMap<>();
+            mark.put("type", "strike");
+            marks.add(mark);
+        }
+        
+        // Enhanced: Subscript/Superscript support
+        String verticalAlign = getFieldValue(run, "getVerticalAlign");
+        if ("subscript".equalsIgnoreCase(verticalAlign)) {
+            Map<String, Object> mark = new LinkedHashMap<>();
+            mark.put("type", "subscript");
+            marks.add(mark);
+        } else if ("superscript".equalsIgnoreCase(verticalAlign)) {
+            Map<String, Object> mark = new LinkedHashMap<>();
+            mark.put("type", "superscript");
+            marks.add(mark);
+        }
+        
+        // Enhanced: Code/Monospace support
+        Boolean code = getFieldValue(run, "getCode");
+        if (Boolean.TRUE.equals(code)) {
+            Map<String, Object> mark = new LinkedHashMap<>();
+            mark.put("type", "code");
+            marks.add(mark);
+        }
+        
+        // Enhanced: Highlight support
+        String highlight = getFieldValue(run, "getHighlight");
+        if (highlight != null && !highlight.isEmpty()) {
+            Map<String, Object> mark = new LinkedHashMap<>();
+            mark.put("type", "highlight");
+            Map<String, Object> highlightAttrs = new LinkedHashMap<>();
+            highlightAttrs.put("color", highlight);
+            mark.put("attrs", highlightAttrs);
             marks.add(mark);
         }
         
@@ -360,6 +635,27 @@ public class TiptapConverter {
             textStyleMark.put("type", "textStyle");
             textStyleMark.put("attrs", textStyleAttrs);
             marks.add(textStyleMark);
+        }
+        
+        // Enhanced: Link support (hyperlinks within runs)
+        String hyperlinkId = getFieldValue(run, "getHyperlinkId");
+        String hyperlinkUrl = getFieldValue(run, "getHyperlinkUrl");
+        if (hyperlinkUrl != null || hyperlinkId != null) {
+            Map<String, Object> linkMark = new LinkedHashMap<>();
+            linkMark.put("type", "link");
+            Map<String, Object> linkAttrs = new LinkedHashMap<>();
+            if (hyperlinkUrl != null) {
+                linkAttrs.put("href", hyperlinkUrl);
+            }
+            if (hyperlinkId != null) {
+                linkAttrs.put("linkId", hyperlinkId);
+            }
+            String linkTarget = getFieldValue(run, "getLinkTarget");
+            if (linkTarget != null) {
+                linkAttrs.put("target", linkTarget);
+            }
+            linkMark.put("attrs", linkAttrs);
+            marks.add(linkMark);
         }
         
         if (!marks.isEmpty()) {
@@ -430,12 +726,30 @@ public class TiptapConverter {
 
     /**
      * Convert TableBlock to table node
+     * Enhanced: Supports cell attributes (colspan, rowspan, borders, background)
      */
     private Map<String, Object> convertTableBlock(Object block) {
         Map<String, Object> tableNode = new LinkedHashMap<>();
         tableNode.put("type", "table");
         
         Map<String, Object> attrs = new LinkedHashMap<>();
+        
+        // Enhanced: Add table-level attributes
+        Integer tableWidth = getFieldValue(block, "getWidth");
+        if (tableWidth != null) {
+            attrs.put("tableWidth", tableWidth);
+        }
+        
+        String tableBorder = getFieldValue(block, "getBorder");
+        if (tableBorder != null) {
+            attrs.put("tableBorder", tableBorder);
+        }
+        
+        String tableAlignment = getFieldValue(block, "getAlignment");
+        if (tableAlignment != null) {
+            attrs.put("tableAlignment", tableAlignment);
+        }
+        
         attrs.put("origin", convertToMap(block));
         tableNode.put("attrs", attrs);
         
@@ -447,6 +761,16 @@ public class TiptapConverter {
                 Map<String, Object> rowNode = new LinkedHashMap<>();
                 rowNode.put("type", "tableRow");
                 
+                // Enhanced: Add row attributes
+                Map<String, Object> rowAttrs = new LinkedHashMap<>();
+                Integer rowHeight = getFieldValue(rowObj, "getHeight");
+                if (rowHeight != null) {
+                    rowAttrs.put("height", rowHeight);
+                }
+                if (!rowAttrs.isEmpty()) {
+                    rowNode.put("attrs", rowAttrs);
+                }
+                
                 List<Map<String, Object>> cells = new ArrayList<>();
                 if (rowObj instanceof List) {
                     @SuppressWarnings("unchecked")
@@ -455,20 +779,82 @@ public class TiptapConverter {
                         Map<String, Object> cellNode = new LinkedHashMap<>();
                         cellNode.put("type", "tableCell");
                         
+                        // Enhanced: Add cell attributes (colspan, rowspan, borders, background)
+                        Map<String, Object> cellAttrs = new LinkedHashMap<>();
+                        
+                        Integer colspan = getFieldValue(cell, "getColspan");
+                        if (colspan != null && colspan > 1) {
+                            cellAttrs.put("colspan", colspan);
+                        }
+                        
+                        Integer rowspan = getFieldValue(cell, "getRowspan");
+                        if (rowspan != null && rowspan > 1) {
+                            cellAttrs.put("rowspan", rowspan);
+                        }
+                        
+                        Integer cellWidth = getFieldValue(cell, "getWidth");
+                        if (cellWidth != null) {
+                            cellAttrs.put("colwidth", new int[]{cellWidth});
+                        }
+                        
+                        String cellBackground = getFieldValue(cell, "getBackgroundColor");
+                        if (cellBackground != null) {
+                            cellAttrs.put("background", cellBackground);
+                        }
+                        
+                        String verticalAlign = getFieldValue(cell, "getVerticalAlign");
+                        if (verticalAlign != null) {
+                            cellAttrs.put("verticalAlign", verticalAlign);
+                        }
+                        
+                        // Cell borders
+                        Object cellBorderTop = getFieldValue(cell, "getBorderTop");
+                        if (cellBorderTop != null) {
+                            cellAttrs.put("borderTop", convertToMap(cellBorderTop));
+                        }
+                        
+                        Object cellBorderBottom = getFieldValue(cell, "getBorderBottom");
+                        if (cellBorderBottom != null) {
+                            cellAttrs.put("borderBottom", convertToMap(cellBorderBottom));
+                        }
+                        
+                        Object cellBorderLeft = getFieldValue(cell, "getBorderLeft");
+                        if (cellBorderLeft != null) {
+                            cellAttrs.put("borderLeft", convertToMap(cellBorderLeft));
+                        }
+                        
+                        Object cellBorderRight = getFieldValue(cell, "getBorderRight");
+                        if (cellBorderRight != null) {
+                            cellAttrs.put("borderRight", convertToMap(cellBorderRight));
+                        }
+                        
+                        if (!cellAttrs.isEmpty()) {
+                            cellNode.put("attrs", cellAttrs);
+                        }
+                        
                         // Create paragraph content for cell
                         Map<String, Object> paraNode = new LinkedHashMap<>();
                         paraNode.put("type", "paragraph");
                         
                         List<Map<String, Object>> paraContent = new ArrayList<>();
-                        String cellText = getFieldValue(cell, "getText");
-                        if (cellText != null && !cellText.isEmpty()) {
-                            Map<String, Object> textNode = new LinkedHashMap<>();
-                            textNode.put("type", "text");
-                            textNode.put("text", cellText);
-                            paraContent.add(textNode);
-                        }
-                        paraNode.put("content", paraContent);
                         
+                        // Enhanced: Support rich content in cells (not just plain text)
+                        List<?> cellRuns = getFieldValue(cell, "getRuns");
+                        if (cellRuns != null && !cellRuns.isEmpty()) {
+                            // Cell has formatted runs
+                            paraContent = convertRuns(cellRuns);
+                        } else {
+                            // Fallback to plain text
+                            String cellText = getFieldValue(cell, "getText");
+                            if (cellText != null && !cellText.isEmpty()) {
+                                Map<String, Object> textNode = new LinkedHashMap<>();
+                                textNode.put("type", "text");
+                                textNode.put("text", cellText);
+                                paraContent.add(textNode);
+                            }
+                        }
+                        
+                        paraNode.put("content", paraContent);
                         cellNode.put("content", Collections.singletonList(paraNode));
                         cells.add(cellNode);
                     }
