@@ -1,0 +1,235 @@
+{
+  "type": "doc",
+  "attrs": {
+    "sourceName": "example-document.docx",
+    "title": "Sample Word Document",
+    "properties": {
+      "author": "John Doe",
+      "createdDate": "2024-01-15",
+      "version": "1.0"
+    },
+    "images": [
+      {
+        "src": "https://example.com/image.png",
+        "alt": "Example image",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "attachments": [
+      {
+        "name": "document.pdf",
+        "url": "https://example.com/document.pdf",
+        "size": 102400,
+        "mimeType": "application/pdf"
+      }
+    ],
+    "hyperlinks": [
+      {
+        "id": "link1",
+        "url": "https://example.com",
+        "text": "Example Link"
+      }
+    ]
+  },
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 1,
+        "originLevel": 2
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Introduction"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "attrs": {
+        "textAlign": "left",
+        "origin": {
+          "runs": [...],
+          "alignment": "LEFT",
+          "isListItem": false
+        }
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "This is a "
+        },
+        {
+          "type": "text",
+          "text": "bold",
+          "marks": [
+            {"type": "bold"},
+            {
+              "type": "textStyle",
+              "attrs": {
+                "fontFamily": "Arial",
+                "fontSize": "12",
+                "originFontSize": 12
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "text",
+          "text": "italic",
+          "marks": [
+            {"type": "italic"},
+            {
+              "type": "textStyle",
+              "attrs": {
+                "color": "#FF0000"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " example."
+        }
+      ]
+    },
+    {
+      "type": "orderedList",
+      "attrs": {
+        "listLevel": 1,
+        "numberingFormat": "decimal",
+        "origin": {...}
+      },
+      "content": [
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": "left"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "First item"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": "left"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Second item"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "attrs": {
+        "origin": {...}
+      },
+      "content": [
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Header 1"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Header 2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Cell 1"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Cell 2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "attrs": {
+        "src": "https://example.com/image.png",
+        "alt": "Example image",
+        "title": null,
+        "origin": {
+          "src": "https://example.com/image.png",
+          "alt": "Example image",
+          "width": 800,
+          "height": 600
+        }
+      }
+    }
+  ]
+}

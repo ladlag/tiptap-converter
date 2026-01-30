@@ -1,0 +1,124 @@
+{
+  "sourceName": "example-document.docx",
+  "title": "Sample Word Document",
+  "properties": {
+    "author": "John Doe",
+    "createdDate": "2024-01-15",
+    "version": "1.0"
+  },
+  "blocks": [
+    {
+      "@type": "HeadingBlock",
+      "level": 2,
+      "text": "Introduction"
+    },
+    {
+      "@type": "ParagraphBlock",
+      "runs": [
+        {
+          "text": "This is a ",
+          "bold": false,
+          "italic": false
+        },
+        {
+          "text": "bold",
+          "bold": true,
+          "italic": false,
+          "fontFamily": "Arial",
+          "fontSize": 12
+        },
+        {
+          "text": " and ",
+          "bold": false,
+          "italic": false
+        },
+        {
+          "text": "italic",
+          "bold": false,
+          "italic": true,
+          "color": "#FF0000"
+        },
+        {
+          "text": " example.",
+          "bold": false,
+          "italic": false
+        }
+      ],
+      "alignment": "LEFT",
+      "isListItem": false
+    },
+    {
+      "@type": "ParagraphBlock",
+      "runs": [
+        {
+          "text": "First item",
+          "bold": false,
+          "italic": false
+        }
+      ],
+      "alignment": "LEFT",
+      "isListItem": true,
+      "listType": "ordered",
+      "listLevel": 1,
+      "numberingFormat": "decimal"
+    },
+    {
+      "@type": "ParagraphBlock",
+      "runs": [
+        {
+          "text": "Second item",
+          "bold": false,
+          "italic": false
+        }
+      ],
+      "alignment": "LEFT",
+      "isListItem": true,
+      "listType": "ordered",
+      "listLevel": 1,
+      "numberingFormat": "decimal"
+    },
+    {
+      "@type": "TableBlock",
+      "rows": [
+        [
+          {"text": "Header 1"},
+          {"text": "Header 2"}
+        ],
+        [
+          {"text": "Cell 1"},
+          {"text": "Cell 2"}
+        ]
+      ]
+    },
+    {
+      "@type": "ImageBlock",
+      "src": "https://example.com/image.png",
+      "alt": "Example image",
+      "width": 800,
+      "height": 600
+    }
+  ],
+  "images": [
+    {
+      "src": "https://example.com/image.png",
+      "alt": "Example image",
+      "width": 800,
+      "height": 600
+    }
+  ],
+  "attachments": [
+    {
+      "name": "document.pdf",
+      "url": "https://example.com/document.pdf",
+      "size": 102400,
+      "mimeType": "application/pdf"
+    }
+  ],
+  "hyperlinks": [
+    {
+      "id": "link1",
+      "url": "https://example.com",
+      "text": "Example Link"
+    }
+  ]
+}
