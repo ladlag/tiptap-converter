@@ -54,7 +54,9 @@
 **Q2: 图片和附件如何处理？会自动上传吗？**  
 转换器**不负责上传**，只做数据转换。需要在构建DocumentData时预先上传并设置URL。
 
-详细解答请查看 [FAQ.md](FAQ.md)
+**详细解答**：
+- [QUICK_ANSWERS.md](QUICK_ANSWERS.md) - 快速可视化回答（5分钟阅读）
+- [FAQ.md](FAQ.md) - 完整详细解答（含代码示例）
 
 ## 快速开始
 
