@@ -46,6 +46,16 @@
 
 详细功能说明请查看 [ENHANCEMENTS.md](ENHANCEMENTS.md)
 
+## ❓ 常见问题
+
+**Q1: 转换器如何识别标题？**  
+支持两种方式：1) HeadingBlock类型直接识别；2) ParagraphBlock样式名自动检测（支持"Heading 1-6"、"标题 1-6"等）
+
+**Q2: 图片和附件如何处理？会自动上传吗？**  
+转换器**不负责上传**，只做数据转换。需要在构建DocumentData时预先上传并设置URL。
+
+详细解答请查看 [FAQ.md](FAQ.md)
+
 ## 快速开始
 
 ### 1. 添加依赖
