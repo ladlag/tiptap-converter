@@ -177,6 +177,8 @@ public class TiptapConverter {
                 return convertImageBlock(block);
             case "AttachmentBlock":
                 return convertAttachmentBlock(block);
+            case "UploadFileBlock":  // Support for uploadFileNode (OLE attachments)
+                return convertUploadFileBlock(block);
             default:
                 // Unknown block type - preserve in origin
                 Map<String, Object> node = new LinkedHashMap<>();
@@ -917,6 +919,70 @@ public class TiptapConverter {
         String url = getFieldValue(block, "getUrl");
         if (url != null) {
             attrs.put("url", url);
+        }
+        
+        // Preserve full block data
+        attrs.put("origin", convertToMap(block));
+        node.put("attrs", attrs);
+        
+        return node;
+    }
+    
+    /**
+     * Convert UploadFileBlock to uploadFileNode (OLE attachments from Word)
+     * This corresponds to the setFile() method in legacy code
+     * Handles embedded OLE objects like .docx, .xlsx files
+     */
+    private Map<String, Object> convertUploadFileBlock(Object block) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("type", "uploadFileNode");
+        
+        Map<String, Object> attrs = new LinkedHashMap<>();
+        
+        // File source URL
+        String src = getFieldValue(block, "getSrc");
+        if (src == null) {
+            src = getFieldValue(block, "getUrl");
+        }
+        if (src == null) {
+            src = getFieldValue(block, "getPath");
+        }
+        if (src != null) {
+            attrs.put("src", src);
+            attrs.put("path", src);  // Legacy compatibility
+        }
+        
+        // File name
+        String filename = getFieldValue(block, "getFilename");
+        if (filename == null) {
+            filename = getFieldValue(block, "getFileName");
+        }
+        if (filename == null) {
+            filename = getFieldValue(block, "getName");
+        }
+        if (filename != null) {
+            attrs.put("filename", filename);
+        }
+        
+        // File type/MIME type
+        String filetype = getFieldValue(block, "getFiletype");
+        if (filetype == null) {
+            filetype = getFieldValue(block, "getMimeType");
+        }
+        if (filetype == null) {
+            filetype = getFieldValue(block, "getContentType");
+        }
+        if (filetype != null) {
+            attrs.put("filetype", filetype);
+        }
+        
+        // File size
+        Object filesize = getFieldValue(block, "getFilesize");
+        if (filesize == null) {
+            filesize = getFieldValue(block, "getSize");
+        }
+        if (filesize != null) {
+            attrs.put("filesize", filesize);
         }
         
         // Preserve full block data

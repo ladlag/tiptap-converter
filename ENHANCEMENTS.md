@@ -243,9 +243,86 @@
 ]
 ```
 
-## 字段映射参考 (Field Mapping Reference)
+### 6. OLE附件/上传文件支持 (UploadFileNode Support)
 
-### ParagraphBlock 字段
+**功能**：支持Word文档中的OLE对象（嵌入的Office文件）
+
+这对应传统代码中的 `setFile()` 和 `setAttachment()` 方法。
+
+#### UploadFileBlock → uploadFileNode
+从 `UploadFileBlock` 提取：
+- 支持多种路径字段：`src`, `url`, `path`
+- 支持多种文件名字段：`filename`, `fileName`, `name`
+- 支持文件类型：`filetype`, `mimeType`, `contentType`
+- 支持文件大小：`filesize`, `size`
+
+**实现方法**：`convertUploadFileBlock()`
+
+**Block类型**：`UploadFileBlock` 或具有type="uploadFileNode"的对象
+
+**示例**：
+```java
+// 输入UploadFileBlock
+{
+  src: "https://example.com/document.docx",
+  filename: "document.docx",
+  filetype: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  filesize: 102400
+}
+
+// 输出TipTap节点
+{
+  "type": "uploadFileNode",
+  "attrs": {
+    "src": "https://example.com/document.docx",
+    "path": "https://example.com/document.docx",
+    "filename": "document.docx",
+    "filetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "filesize": 102400,
+    "origin": {...}
+  }
+}
+```
+
+**对应传统代码**：
+```java
+// 传统setFile方法
+private void setFile(XWPFRun run, ArrayNode paragraphContent, ...) {
+    // 从OLE对象提取附件
+    XmlObject[] oleObjects = ctr.selectPath(...);
+    
+    ObjectNode fileNode = mapper.createObjectNode();
+    fileNode.put("type", "uploadFileNode");
+    ObjectNode fileAttrNode = mapper.createObjectNode();
+    fileAttrNode.put("src", attachDto.getFilePath());
+    fileAttrNode.put("filename", fileName);
+    fileAttrNode.put("filetype", "...");
+    fileAttrNode.put("filesize", attachDto.getFileSize());
+    fileNode.set("attrs", fileAttrNode);
+}
+```
+
+## Block类型映射参考 (Block Type Mapping Reference)
+
+### 支持的Block类型
+
+| Block类型 | TipTap节点 | 说明 |
+|-----------|-----------|------|
+| `HeadingBlock` | `heading` | 标题（自动级别映射） |
+| `ParagraphBlock` | `paragraph` 或 `heading` | 段落（可通过style检测为标题） |
+| `ParagraphBlock` (isListItem) | `orderedList` / `bulletList` | 列表项（自动合并） |
+| `TableBlock` | `table` | 表格 |
+| `ImageBlock` | `image` | 图片块 |
+| `AttachmentBlock` | `attachment` | 附件块 |
+| 🆕 `UploadFileBlock` | `uploadFileNode` | OLE附件/上传文件 |
+| Unknown Block | `paragraph` + `origin` | 未知类型（保留原始数据） |
+
+### 内嵌对象支持
+
+| 对象类型 | 来源 | TipTap节点 | 说明 |
+|---------|------|-----------|------|
+| EmbeddedImage | `TextRun.embeddedImages` | `image` | 文本中的内嵌图片 |
+| EmbeddedAttachment | `TextRun.embeddedAttachments` | `attachment` | 文本中的内嵌附件 |
 | 字段名 | TipTap位置 | 说明 |
 |--------|-----------|------|
 | `style` | `attrs.styleSource` | 段落样式名 |
